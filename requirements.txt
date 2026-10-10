@@ -1,0 +1,11 @@
+flask
+flask-cors
+pymongo
+python-dotenv
+bcrypt
+rapidfuzz
+pandas
+scikit-learn
+certifi
+flask-pymongo
+requests
