@@ -3,6 +3,7 @@ from bson import ObjectId
 import re
 from whatsapp_gateway import WhatsAppGateway
 import database as db_module
+from geocoding import resolve_location_coordinates
 
 user_bp = Blueprint('user', __name__)
 
@@ -17,6 +18,11 @@ def get_profile():
             return jsonify({"error": "User not found"}), 404
         user_data['_id'] = str(user_data['_id'])
         user_data.pop('password', None)
+
+        # Ensure coordinates are dynamically resolved and synchronized
+        lat, lon, _ = resolve_location_coordinates(user_data.get('location'), user_data.get('lat'), user_data.get('lon'))
+        user_data['lat'] = lat
+        user_data['lon'] = lon
 
         if (user_data.get('role') or '').lower() == 'worker':
             w_reviews = list(db_module.reviews_collection.find({"worker_email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}}))
@@ -64,6 +70,14 @@ def update_profile():
             "experience": data.get('experience')
         }
 
+        if data.get('location'):
+            lat, lon, _ = resolve_location_coordinates(data.get('location'), data.get('lat'), data.get('lon'))
+            updates['lat'] = lat
+            updates['lon'] = lon
+        elif data.get('lat') is not None and data.get('lon') is not None:
+            updates['lat'] = float(data.get('lat'))
+            updates['lon'] = float(data.get('lon'))
+
         updates = {k: v for k, v in updates.items() if v is not None}
 
         result = db_module.users_collection.update_one(
@@ -76,6 +90,9 @@ def update_profile():
             if updated_user:
                 updated_user['_id'] = str(updated_user['_id'])
                 updated_user.pop('password', None)
+                lat, lon, _ = resolve_location_coordinates(updated_user.get('location'), updated_user.get('lat'), updated_user.get('lon'))
+                updated_user['lat'] = lat
+                updated_user['lon'] = lon
             return jsonify({
                 "message": "Profile updated successfully!",
                 "user": updated_user
@@ -103,6 +120,14 @@ def handle_worker_by_id(worker_id):
                 "operating_radius": data.get('operating_radius'),
                 "experience": data.get('experience')
             }
+            if data.get('location'):
+                lat, lon, _ = resolve_location_coordinates(data.get('location'), data.get('lat'), data.get('lon'))
+                updates['lat'] = lat
+                updates['lon'] = lon
+            elif data.get('lat') is not None and data.get('lon') is not None:
+                updates['lat'] = float(data.get('lat'))
+                updates['lon'] = float(data.get('lon'))
+
             updates = {k: v for k, v in updates.items() if v is not None}
 
             query_conds = [{"email": worker_id}]
@@ -115,6 +140,9 @@ def handle_worker_by_id(worker_id):
             if updated_worker:
                 updated_worker['_id'] = str(updated_worker['_id'])
                 updated_worker.pop('password', None)
+                lat, lon, _ = resolve_location_coordinates(updated_worker.get('location'), updated_worker.get('lat'), updated_worker.get('lon'))
+                updated_worker['lat'] = lat
+                updated_worker['lon'] = lon
                 return jsonify({"message": "Worker updated successfully", "worker": updated_worker, "user": updated_worker}), 200
             return jsonify({"error": "Worker not found"}), 404
         else:
@@ -126,6 +154,9 @@ def handle_worker_by_id(worker_id):
                 return jsonify({"error": "Worker not found"}), 404
             worker['_id'] = str(worker['_id'])
             worker.pop('password', None)
+            lat, lon, _ = resolve_location_coordinates(worker.get('location'), worker.get('lat'), worker.get('lon'))
+            worker['lat'] = lat
+            worker['lon'] = lon
             return jsonify(worker), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -141,6 +172,11 @@ def get_worker_details():
 
         worker['_id'] = str(worker['_id'])
         worker.pop('password', None)
+
+        # Synchronize location coordinates accurately
+        lat, lon, _ = resolve_location_coordinates(worker.get('location'), worker.get('lat'), worker.get('lon'))
+        worker['lat'] = lat
+        worker['lon'] = lon
 
         raw_phone = worker.get('phone') or worker.get('mobile')
         worker['masked_phone'] = WhatsAppGateway.mask_phone_number(raw_phone)

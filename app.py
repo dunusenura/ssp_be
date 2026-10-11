@@ -9,6 +9,7 @@ from routes.payment_routes import payment_bp
 from routes.chat_routes import chat_bp
 from routes.user_routes import user_bp
 from routes.review_routes import review_bp
+from routes.admin_routes import admin_bp
 
 def create_app():
     app = Flask(__name__)
@@ -35,6 +36,7 @@ def create_app():
     app.register_blueprint(chat_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(review_bp)
+    app.register_blueprint(admin_bp)
 
     return app
 

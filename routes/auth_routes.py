@@ -3,6 +3,8 @@ import bcrypt
 from datetime import datetime, timezone
 import database as db_module
 
+from geocoding import resolve_location_coordinates
+
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
@@ -18,18 +20,20 @@ def register():
 
         hashed_pw = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
         category_val = data.get('category') or data.get('serviceCategory') or data.get('service_category') or 'General Service'
-        
+        user_loc = data.get('location', 'Gampaha')
+        lat, lon, _ = resolve_location_coordinates(user_loc, data.get('lat'), data.get('lon'))
+
         new_user = {
             "name": data['name'],
             "email": data['email'],
-            "location": data.get('location', 'Gampaha'),
+            "location": user_loc,
             "role": data.get('role', 'seeker'),
             "category": category_val,
             "password": hashed_pw,
             "reliability": 5.0,
             "experience": data.get('experience', 0),
-            "lat": data.get('lat', 7.0912),
-            "lon": data.get('lon', 79.9991),
+            "lat": lat,
+            "lon": lon,
             "joined_at": datetime.now(timezone.utc).isoformat(),
             "bio": f"Hello! I am {data['name']}, registered on WorkPub.",
             "skills": [],

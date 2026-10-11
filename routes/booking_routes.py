@@ -195,10 +195,12 @@ def get_my_bookings():
                 client_info = db_module.users_collection.find_one({"name": {"$regex": f"^{re.escape(c_name)}$", "$options": "i"}})
 
             if client_info:
-                b['client_phone'] = client_info.get('phone') or client_info.get('mobile') or client_info.get('contact') or client_info.get('whatsapp') or b.get('client_phone') or 'Not Provided'
+                c_phone = client_info.get('phone') or client_info.get('mobile') or client_info.get('contact') or client_info.get('whatsapp') or b.get('client_phone')
+                b['client_phone'] = c_phone.strip() if (c_phone and str(c_phone).strip() and str(c_phone).strip() != 'Not Provided') else 'Not Provided'
                 b['client_name'] = b.get('client_name') or client_info.get('name', 'Client')
             else:
-                b['client_phone'] = b.get('client_phone') or 'Not Provided'
+                raw_c_phone = b.get('client_phone')
+                b['client_phone'] = raw_c_phone.strip() if (raw_c_phone and str(raw_c_phone).strip() and str(raw_c_phone).strip() != 'Not Provided') else 'Not Provided'
 
             worker_info = None
             w_email = b.get('worker_email')
@@ -215,11 +217,12 @@ def get_my_bookings():
                     pass
 
             if worker_info:
-                w_phone = worker_info.get('phone') or worker_info.get('mobile') or worker_info.get('whatsapp') or worker_info.get('contact')
-                b['worker_phone'] = w_phone if (w_phone and w_phone != 'Not Provided' and len(str(w_phone).strip()) > 0) else (b.get('worker_phone') or '0775678901')
+                w_phone = worker_info.get('phone') or worker_info.get('mobile') or worker_info.get('whatsapp') or worker_info.get('contact') or b.get('worker_phone')
+                b['worker_phone'] = w_phone.strip() if (w_phone and str(w_phone).strip() and str(w_phone).strip() != 'Not Provided') else 'Not Provided'
                 b['worker_name'] = b.get('worker_name') or worker_info.get('name', 'Worker')
             else:
-                b['worker_phone'] = b.get('worker_phone') if (b.get('worker_phone') and b.get('worker_phone') != 'Not Provided') else '0775678901'
+                raw_w_phone = b.get('worker_phone')
+                b['worker_phone'] = raw_w_phone.strip() if (raw_w_phone and str(raw_w_phone).strip() and str(raw_w_phone).strip() != 'Not Provided') else 'Not Provided'
 
         return jsonify(bookings)
     except Exception as e:

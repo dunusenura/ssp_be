@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import database as db_module
+from geocoding import resolve_location_coordinates
 
 job_bp = Blueprint('job', __name__)
 
@@ -209,6 +210,10 @@ def search_workers():
                 w['reliability'] = 0.0
                 w['review_count'] = 0
 
+            lat, lon, _ = resolve_location_coordinates(w.get('location'), w.get('lat'), w.get('lon'))
+            w['lat'] = lat
+            w['lon'] = lon
+
             sanitized_workers.append(w)
 
         sanitized_workers.sort(key=lambda x: x.get('reliability', 0), reverse=True)
@@ -241,6 +246,9 @@ def recommend_workers():
             rec.pop('password', None)
             rec.pop('phone', None)
             rec.pop('mobile', None)
+            lat, lon, _ = resolve_location_coordinates(rec.get('location'), rec.get('lat'), rec.get('lon'))
+            rec['lat'] = lat
+            rec['lon'] = lon
         return jsonify(recommendations)
     except Exception as e:
         return jsonify([])
