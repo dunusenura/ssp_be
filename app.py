@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 import config
 from database import init_db
+from socket_service import init_socketio, socketio
 from routes.auth_routes import auth_bp
 from routes.job_routes import job_bp
 from routes.booking_routes import booking_bp
@@ -28,6 +29,9 @@ def create_app():
     # Initialize Database
     init_db(app)
 
+    # Initialize Socket.IO
+    init_socketio(app)
+
     # Register Blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(job_bp)
@@ -43,5 +47,5 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    print(f"🚀 WorkPub Backend Server starting on port {config.PORT}...")
-    app.run(debug=config.DEBUG, host='0.0.0.0', port=config.PORT)
+    print(f"WorkPub Backend Server starting on port {config.PORT} with Socket.IO...")
+    socketio.run(app, debug=config.DEBUG, host='0.0.0.0', port=config.PORT, allow_unsafe_werkzeug=True)

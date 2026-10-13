@@ -9,3 +9,5 @@ scikit-learn
 certifi
 flask-pymongo
 requests
+flask-socketio
+simple-websocket

@@ -4,6 +4,7 @@ import re
 from whatsapp_gateway import WhatsAppGateway
 import database as db_module
 from geocoding import resolve_location_coordinates
+from socket_service import emit_event
 
 user_bp = Blueprint('user', __name__)
 
@@ -66,9 +67,14 @@ def update_profile():
             "category": category_val,
             "hourly_rate": data.get('hourly_rate'),
             "availability": data.get('availability'),
-            "operating_radius": data.get('operating_radius'),
-            "experience": data.get('experience')
+            "operating_radius": data.get('operating_radius')
         }
+
+        if 'experience' in data and data.get('experience') is not None:
+            try:
+                updates['experience'] = max(0, int(data.get('experience')))
+            except (ValueError, TypeError):
+                updates['experience'] = 0
 
         if data.get('location'):
             lat, lon, _ = resolve_location_coordinates(data.get('location'), data.get('lat'), data.get('lon'))
@@ -93,6 +99,18 @@ def update_profile():
                 lat, lon, _ = resolve_location_coordinates(updated_user.get('location'), updated_user.get('lat'), updated_user.get('lon'))
                 updated_user['lat'] = lat
                 updated_user['lon'] = lon
+
+            # Emit real-time Socket event if user is worker
+            if (updated_user.get('role') or '').lower() == 'worker':
+                emit_event('worker-updated', {
+                    "worker_id": str(updated_user.get('_id', '')),
+                    "email": updated_user.get('email'),
+                    "name": updated_user.get('name'),
+                    "phone": updated_user.get('phone'),
+                    "location": updated_user.get('location'),
+                    "category": updated_user.get('category')
+                })
+
             return jsonify({
                 "message": "Profile updated successfully!",
                 "user": updated_user
@@ -117,9 +135,13 @@ def handle_worker_by_id(worker_id):
                 "category": category_val,
                 "hourly_rate": data.get('hourly_rate'),
                 "availability": data.get('availability'),
-                "operating_radius": data.get('operating_radius'),
-                "experience": data.get('experience')
+                "operating_radius": data.get('operating_radius')
             }
+            if 'experience' in data and data.get('experience') is not None:
+                try:
+                    updates['experience'] = max(0, int(data.get('experience')))
+                except (ValueError, TypeError):
+                    updates['experience'] = 0
             if data.get('location'):
                 lat, lon, _ = resolve_location_coordinates(data.get('location'), data.get('lat'), data.get('lon'))
                 updates['lat'] = lat
@@ -143,6 +165,17 @@ def handle_worker_by_id(worker_id):
                 lat, lon, _ = resolve_location_coordinates(updated_worker.get('location'), updated_worker.get('lat'), updated_worker.get('lon'))
                 updated_worker['lat'] = lat
                 updated_worker['lon'] = lon
+
+                # Emit real-time Socket event
+                emit_event('worker-updated', {
+                    "worker_id": str(updated_worker.get('_id', '')),
+                    "email": updated_worker.get('email'),
+                    "name": updated_worker.get('name'),
+                    "phone": updated_worker.get('phone'),
+                    "location": updated_worker.get('location'),
+                    "category": updated_worker.get('category')
+                })
+
                 return jsonify({"message": "Worker updated successfully", "worker": updated_worker, "user": updated_worker}), 200
             return jsonify({"error": "Worker not found"}), 404
         else:

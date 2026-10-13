@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import database as db_module
 
 from geocoding import resolve_location_coordinates
+from socket_service import emit_event
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -23,6 +24,12 @@ def register():
         user_loc = data.get('location', 'Gampaha')
         lat, lon, _ = resolve_location_coordinates(user_loc, data.get('lat'), data.get('lon'))
 
+        raw_exp = data.get('experience', 0)
+        try:
+            experience_val = int(raw_exp) if raw_exp not in [None, ''] else 0
+        except (ValueError, TypeError):
+            experience_val = 0
+
         new_user = {
             "name": data['name'],
             "email": data['email'],
@@ -31,17 +38,36 @@ def register():
             "category": category_val,
             "password": hashed_pw,
             "reliability": 5.0,
-            "experience": data.get('experience', 0),
+            "experience": experience_val,
             "lat": lat,
             "lon": lon,
             "joined_at": datetime.now(timezone.utc).isoformat(),
             "bio": f"Hello! I am {data['name']}, registered on WorkPub.",
             "skills": [],
             "phone": data.get('phone', ''),
-            "is_verified": False
+            "is_verified": False,
+            "verification_status": "pending"
         }
 
         db_module.users_collection.insert_one(new_user)
+
+        # Emit real-time Socket event if registered user is a worker
+        if (new_user.get('role') or '').lower() == 'worker':
+            emit_event('verification-updated', {
+                "worker_email": new_user["email"],
+                "name": new_user["name"],
+                "category": new_user["category"],
+                "location": new_user["location"],
+                "is_verified": False,
+                "action": "registered"
+            })
+            emit_event('worker-updated', {
+                "email": new_user["email"],
+                "name": new_user["name"],
+                "category": new_user["category"],
+                "location": new_user["location"],
+                "role": "worker"
+            })
 
         return jsonify({
             "message": "Account created successfully!",
@@ -123,7 +149,8 @@ def google_auth():
                 "skills": [],
                 "phone": "",
                 "reliability": 0.0,
-                "is_verified": True,
+                "is_verified": False if (data.get('role') or '').lower() == 'worker' else True,
+                "verification_status": "pending" if (data.get('role') or '').lower() == 'worker' else "approved",
                 "is_google_auth": True,
                 "google_id": google_id,
                 "picture": picture

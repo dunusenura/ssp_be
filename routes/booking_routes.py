@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from bson import ObjectId
 import re
 import database as db_module
+from socket_service import emit_event
 
 booking_bp = Blueprint('booking', __name__)
 
@@ -69,6 +70,15 @@ def apply_job():
                 notif_type="new_applicant",
                 link="/my-bookings"
             )
+
+        # Emit real-time Socket event
+        emit_event('booking-created', {
+            "booking_id": str(result.inserted_id),
+            "client_email": booking_entry["client_email"],
+            "worker_email": booking_entry["worker_email"],
+            "service_type": booking_entry["service_type"],
+            "status": "pending"
+        })
 
         return jsonify({
             "message": "Job application submitted successfully!",
@@ -147,6 +157,15 @@ def create_booking():
                 notif_type="booking_placed",
                 link="/my-bookings"
             )
+
+        # Emit real-time Socket event
+        emit_event('booking-created', {
+            "booking_id": str(result.inserted_id),
+            "client_email": booking_entry["client_email"],
+            "worker_email": booking_entry["worker_email"],
+            "service_type": booking_entry["service_type"],
+            "status": "pending"
+        })
 
         return jsonify({
             "message": "Booking request sent successfully!",
@@ -268,6 +287,14 @@ def update_booking_status():
                     notif_type="status_update",
                     link="/my-bookings"
                 )
+
+        # Emit real-time Socket event
+        emit_event('booking-updated', {
+            "booking_id": str(booking_id),
+            "status": status,
+            "worker_email": booking.get('worker_email') if booking else None,
+            "client_email": booking.get('client_email') if booking else None
+        })
 
         return jsonify({"message": f"Status updated to {status}"})
     except Exception as e:

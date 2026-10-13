@@ -8,6 +8,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import database as db_module
 from geocoding import resolve_location_coordinates
+from socket_service import emit_event
 
 job_bp = Blueprint('job', __name__)
 
@@ -61,6 +62,15 @@ def post_job():
                 )
             except Exception as ne:
                 print(f"Notification Error: {ne}")
+
+        # Emit real-time Socket event
+        emit_event('job-created', {
+            "job_id": str(result.inserted_id),
+            "title": new_job['title'],
+            "category": new_job['category'],
+            "location": new_job['location'],
+            "status": "open"
+        })
 
         return jsonify({"message": "Job posted successfully!", "id": str(result.inserted_id)}), 201
     except Exception as e:
